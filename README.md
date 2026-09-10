@@ -11,6 +11,8 @@ An end-to-end machine learning project that predicts a student's **math score** 
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
 - [Dataset](#dataset)
+- [Model Performance](#model-performance)
+- [Exploratory Data Analysis](#exploratory-data-analysis)
 - [Setup & Installation](#setup--installation)
 - [Usage](#usage)
   - [Exploring the Notebooks](#exploring-the-notebooks)
@@ -21,6 +23,7 @@ An end-to-end machine learning project that predicts a student's **math score** 
 - [Deployment Screenshots](#deployment-screenshots)
 - [Code Reference](#code-reference)
 - [Known Issues / TODO](#known-issues--todo)
+- [Future Improvements](#future-improvements)
 - [Author](#author)
 
 ---
@@ -186,15 +189,46 @@ After running the training pipeline (with the `evaluate_model()` early-return bu
 **Linear Regression came out on top**, ahead of every ensemble model — suggesting the relationship between the input features and math score in this dataset is largely linear/additive rather than needing complex non-linear interactions. `ModelTrainer` selects and saves whichever model scores highest (here, Linear Regression) as `artifacts/model.pkl`.
 
 ---
+## Exploratory Data Analysis
+ 
+Charts generated during EDA (`notebook/1_EDA_Student_Performance.ipynb`), illustrating the dataset before modeling:
+ 
+**Score distributions** — math, reading, and writing scores are all roughly bell-shaped and centered in the 60s–70s, with a handful of low-score outliers:
+ 
+![Score Distribution](images/score_distribution.png)
+ 
+**Outlier check** — boxplots of math, reading, writing, and average scores confirm a small number of low-end outliers per subject (visible as individual points below the whiskers), with no extreme high-end outliers:
+ 
+![Outliers](images/outliers.png)
+ 
+**Categorical breakdown** — distribution of students by gender, race/ethnicity, lunch type, test preparation course, and parental education level:
+ 
+![Multivariate Pie Charts](images/multivariate_analysis_pie_chart.png)
+ 
+**Parental education levels** — "some college" and "associate's degree" are the most common categories, "master's degree" the least:
+ 
+![Comparison of Parental Education](images/comparison_of_parental_education.png)
+ 
+**Pairwise relationships** — math, reading, writing, total, and average scores are all strongly positively correlated with each other (as expected, since total/average are derived from the other three), shown split by gender:
+ 
+![Pairplot](images/multivariate_analysis_pairplot.png)
+ 
+---
 ## Setup & Installation
 
-### 1. Create a virtual environment
+### 1. Clone the repository
+```bash
+git clone <repo-url>
+cd <repo-folder>
+```
+
+### 2. Create a virtual environment
 ```bash
 conda create -p venv python==3.11 -y
 conda activate venv/     
 ```
 
-### 2. Install dependencies
+### 3. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
@@ -216,7 +250,7 @@ These contain the exploratory data analysis and the original model comparison wo
 
 
 ### Running the Training Pipeline
-The three pipeline stages are implemented as classes, but are wired together only in a commented-out block at the bottom of `data_ingestion.py` (see [Known Issues](#known-issues--todo)). To run the full pipeline end-to-end, use that block as a starting point — e.g. from the project root:
+The three pipeline stages are implemented as classes, but are wired together only in a commented-out block at the bottom of `data_ingestion.py`. To run the full pipeline end-to-end, use that block as a starting point — e.g. from the project root:
 ```python
 from src.components.data_ingestion import DataIngestion
 from src.components.data_transformation import DataTransformation
@@ -250,7 +284,16 @@ This starts a Flask server on `http://0.0.0.0:5000` (Flask's default port). Visi
 
 The form collects: gender, race/ethnicity, parental education, lunch type, test preparation course, and reading/writing scores.
 
+**The prediction form**, before submission:
+ 
+![Prediction Form](images/studentperformance_form.png)
+ 
+**After submission**, showing the predicted math score:
+ 
+![Prediction Result](images/studentperformance_prediction.png)
+ 
 ---
+
 
 ## Deployment (AWS)
 
@@ -306,7 +349,7 @@ Flask entry point.
 
 ### `src/utils.py`
 - `save_object(file_path, obj)` / `load_object(file_path)` — pickle (via `dill`) a Python object to/from disk, creating parent directories as needed.
-- `evaluate_model(X_train, y_train, X_test, y_test, models, params)` — loops over each model, runs `GridSearchCV(model, param, cv=3)`, refits the model with the best params found, and scores it with R² on the test set. **The `return report` statement is indented inside the `for` loop**, so it currently returns after evaluating only the *first* model in the `models` dict rather than all of them — see [Known Issues](#known-issues--todo).
+- `evaluate_model(X_train, y_train, X_test, y_test, models, params)` — loops over each model, runs `GridSearchCV(model, param, cv=3)`, refits the model with the best params found, and scores it with R² on the test set. **The `return report` statement is indented inside the `for` loop**, so it currently returns after evaluating only the *first* model in the `models` dict rather than all of them.
 
 ### `src/components/data_ingestion.py`
 - `DataIngestionConfig` (dataclass) defines `train_data_path`, `test_data_path`, `raw_data_path`, all under `artifacts/`.
@@ -337,6 +380,13 @@ Currently an empty file — presumably intended to hold the same ingestion → t
 - [ ] **Hardcoded Windows-style paths** (`r'notebook\data\stud.csv'` in `data_ingestion.py`, `r'artifacts\model.pkl'` / `r'artifacts\preprocessor.pkl'` in `predict_pipeline.py`) will break on Linux/macOS and inside the Elastic Beanstalk Linux runtime. Replace with `os.path.join(...)` or `pathlib.Path`.
 - [ ] Add basic input validation on the Flask form (e.g. score ranges) beyond the HTML `min`/`max` attributes, since those are client-side only.
 
+---
+## Future Improvements
+ 
+- **FastAPI backend** — migrate from Flask to FastAPI for automatic interactive docs (`/docs`), request/response validation via Pydantic models, and async support, bringing this project in line with the network security project's stack.
+- **MLOps** — add experiment tracking (MLflow/DagsHub) so model comparisons across runs are persisted rather than only visible as a one-off printed dict; consider model versioning instead of always overwriting `artifacts/model.pkl`.
+- **Better UI/UX** — improve the prediction form's styling and layout, show which model produced the prediction and its R² score for transparency, and add clearer input validation/error messaging beyond HTML `min`/`max` attributes.
+- **Unit tests** — add tests for `data_transformation.py` (preprocessor output shape/columns) and `model_trainer.py` (confirm `evaluate_model` returns results for all candidate models), plus a CI workflow that runs them on push before the CodePipeline deploy stage.
 ---
 
 ## Author
