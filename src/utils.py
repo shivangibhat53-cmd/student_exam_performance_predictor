@@ -18,32 +18,39 @@ def save_object(file_path, obj):
     except Exception as e:
         raise CustomException(e,sys)
 
-def evaluate_model(X_train,y_train,X_test,y_test,models,params):
+    
+def evaluate_models(X_train, y_train,X_test,y_test,models,param):
     try:
         report = {}
-        for i in range(len(list(models))):
-            model = list(models.values())[i]
-            param = params[list(models.keys())[i]]
 
-            gs = GridSearchCV(model,param,cv=3)
-            gs.fit(X_train,y_train)
+        model_keys = list(models.keys())
+        
+        for name in model_keys:
+            model = models[name]
+            para = param.get(name, {})
 
-            model.set_params(**gs.best_params_)
+            gs = GridSearchCV(model, para, cv=3, n_jobs=-1)
+            gs.fit(X_train, y_train)
 
-            model.fit(X_train,y_train)
+            # Extract the actual, fully-trained model object
+            models[name] = gs.best_estimator_
 
-            y_train_pred = model.predict(X_train)
-            y_test_pred  = model.predict(X_test)
+            # Generate predictions using the verified trained model
+            y_train_pred = models[name].predict(X_train)
+            y_test_pred = models[name].predict(X_test)
 
-            train_model_score = r2_score(y_train,y_train_pred)
+            train_model_score = r2_score(y_train, y_train_pred)
+            test_model_score = r2_score(y_test, y_test_pred)
+            #print(test_model_score)
+            # Save the score and the working model object
+            report[name] = test_model_score
+            
+        # Return both dictionaries back to the component file
+        return report
 
-            test_model_score = r2_score(y_test,y_test_pred)
 
-            report[list(models.keys())[i]] = test_model_score
-
-            return report
     except Exception as e:
-        raise CustomException(e,sys)
+        raise CustomException(e, sys)
 
 def load_object(file_path):
     try:
