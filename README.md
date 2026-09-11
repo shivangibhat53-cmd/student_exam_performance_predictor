@@ -291,7 +291,7 @@ The form collects: gender, race/ethnicity, parental education, lunch type, test 
 **After submission**, showing the predicted math score:
  
 ![Prediction Result](images/studentperformance_prediction.png)
- 
+
 ---
 
 
@@ -311,7 +311,7 @@ The app is deployed on **AWS Elastic Beanstalk**, with deployments automated thr
   ```
   `WSGIPath: application:application` tells Elastic Beanstalk's WSGI server to import the `application` object from `application.py` (Flask's `app = application` aliasing in that file supports both names). The `PIP_OPTIONS` setting forces binary-only wheel installs to avoid slow/failing source builds for packages like `scikit-learn`, `xgboost`, and `catboost` in the Beanstalk build environment.
 - **IAM** — a dedicated service role (`AWSCodePipelineServiceRole-us-east-2-studentperformance_ml`) is attached with managed/customer policies covering Elastic Beanstalk administration, CodeBuild, CodeConnections (GitHub integration), and S3 (artifact storage for the pipeline).
-
+> **Instance size issue:** Deploying to Elastic Beanstalk on a **t3.micro** (free-tier) instance failed — `xgboost` and `catboost` are memory/compute-heavy at install and import time, and t3.micro's limited RAM wasn't sufficient for the environment to come up healthy. A larger instance type (e.g. `t3.small` or above) is needed for this app to deploy successfully with the full model stack. This is also reflected in the Elastic Beanstalk screenshot below, where the environment shows zero running instances.
 ---
 
 ## Deployment Screenshots
@@ -377,6 +377,7 @@ Currently an empty file — presumably intended to hold the same ingestion → t
 ---
 
 ## Known Issues / TODO
+- [ ] **Elastic Beanstalk deployment fails on `t3.micro`** — `xgboost` and `catboost` are too resource-heavy (RAM/CPU) for the free-tier `t3.micro` instance type; the environment can't come up healthy and gets scaled down to zero instances. Deploying successfully requires a larger instance type (e.g. `t3.large` or above), which falls outside the AWS free tier.
 - [ ] **Hardcoded Windows-style paths** (`r'notebook\data\stud.csv'` in `data_ingestion.py`, `r'artifacts\model.pkl'` / `r'artifacts\preprocessor.pkl'` in `predict_pipeline.py`) will break on Linux/macOS and inside the Elastic Beanstalk Linux runtime. Replace with `os.path.join(...)` or `pathlib.Path`.
 - [ ] Add basic input validation on the Flask form (e.g. score ranges) beyond the HTML `min`/`max` attributes, since those are client-side only.
 
